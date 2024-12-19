@@ -1,0 +1,291 @@
+---
+title: 'Data 607 Final: Remote Work & Mental Health'
+author: "Leslie Tavarez"
+date: "2024-12-18"
+output: html_document
+---
+## Introduction: 
+
+My project explores the relationship between work location (remote, onsite, hybrid) and various mental health indicators, such as stress levels, mental fatigue, and social isolation. By analyzing survey data from employees, the project aims to uncover how different work setups influence employee well-being. Statistical methods like chi-squared tests and multiple regression are used to evaluate these relationships and provide insights into the potential mental health challenges associated with different work environments.
+
+I love working remotely and wanted to see if other people agree. Remote work has made me happier and allowed me to pursue hobbies outside of work during hours I would normally be commuting. This flexibility is one of the many reasons I became interested in studying data science—because it offers remote and hybrid career opportunities. 
+
+## Null Hypothesis (H₀):
+There is no significant relationship between work location (onsite, remote, hybrid) and mental health indicators (stress level, work-life balance, mental fatigue score, burn rate, resource allocation, etc.).
+
+## Alternative Hypothesis (H₁):
+Work location (onsite, remote, hybrid) significantly influences mental health indicators (stress level, work-life balance, mental fatigue score, burn rate, etc.).
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Step 1: loading dataset 1 
+
+```{r}
+library(readr)
+
+# Load data from GitHub into R
+url <- "https://raw.githubusercontent.com/leslietavarez/remotework-mentalhealth/refs/heads/main/Impact_of_Remote_Work_on_Mental_Health%20(1).csv"
+df <- read.csv(url)
+
+# Check the data
+head(df)
+```
+## Step 2: cleaning the data
+```{r}
+library(dplyr)
+colnames(df) <- tolower(colnames(df)) #change all column names to lowercase
+
+df <- df %>%
+  mutate(across(where(is.character), tolower)) #change all characters to lowercase
+
+sum(is.na(df)) #check for missing values returned 0
+
+df <- distinct(df) #removes duplicates if any
+
+head(df)
+```
+## Chi-Squared Test (work_location vs. stress_level)
+```{r}
+# Create contingency table
+stress_table <- table(df$work_location, df$stress_level)
+
+# Perform Chi-squared test
+chisq_test <- chisq.test(stress_table)
+
+# Output results
+chisq_test
+
+# Count of each stress level for each work location
+table(df$work_location, df$stress_level)
+
+# Proportions of stress levels by work location
+prop_table <- prop.table(table(df$work_location, df$stress_level), 1)
+
+# Print proportions
+prop_table
+
+library(ggplot2)
+# Create bar plot
+ggplot(df, aes(x = work_location, fill = stress_level)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Stress Level by Work Location",
+    x = "Work Location",
+    y = "Count",
+    fill = "Stress Level"
+  ) +
+  theme_minimal()
+
+```
+Interpretation of Results
+From Chi-squared test output:
+
+Chi-Squared Statistic:
+X-squared = 1.9
+Degrees of freedom (df = 4)
+p-value = 0.8
+Since the p-value = 0.8, it is much greater than the conventional threshold of 0.05.
+
+Null Hypothesis:
+H₀ (Null): There is no association between work location and stress level.
+H₁ (Alternative): There is an association between work location and stress level.
+
+Since p = 0.8 > 0.05, we fail to reject the null hypothesis, meaning there is no statistically significant association between work location and stress level.
+
+## ANOVA (work life balance vs. work location)
+
+```{r pressure, echo=FALSE}
+# Perform ANOVA
+work_life_anova <- aov(work_life_balance_rating ~ work_location, data = df)
+
+# View the summary
+summary(work_life_anova)
+
+ggplot(df, aes(x = work_location, y = work_life_balance_rating, fill = work_location)) +
+  geom_boxplot() +
+  labs(
+    title = "Work-Life Balance Rating by Work Location",
+    x = "Work Location",
+    y = "Work-Life Balance Rating"
+  ) +
+  theme_minimal()
+```
+F Value = 2.35:
+This is the calculated ratio of between-group variance to within-group variance.
+p-value = 0.31:
+The p-value tells us whether the differences in means across groups are statistically significant.
+
+Interpretation:
+If p<0.05, we would reject the null hypothesis.
+Here, 0.31 > 0.05, so there is no statistically significant difference in the work-life balance ratings across the three work_location groups.
+
+Based on this ANOVA:
+The mean work-life balance rating does not differ significantly across the groups onsite, hybrid, and remote.
+This suggests that location (onsite, hybrid, or remote) has no statistically significant impact on how employees rate their work-life balance.
+
+
+## Work Location vs. Mental Health Condition
+```{r}
+# Create contingency table between work_location and mental_health_condition
+mental_health_table <- table(df$work_location, df$mental_health_condition)
+
+# View the table
+print(mental_health_table)
+
+# Perform Chi-squared test
+chi_test <- chisq.test(mental_health_table)
+
+# Display the test result
+print(chi_test)
+
+# Calculate counts for mental health condition by work_location
+mental_health_plot <- df %>%
+  group_by(work_location, mental_health_condition) %>%
+  summarize(count = n())
+
+# Plot
+ggplot(mental_health_plot, aes(x = work_location, y = count, fill = mental_health_condition)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Mental Health Conditions by Work Location",
+    x = "Work Location",
+    y = "Count",
+    fill = "Mental Health Condition"
+  ) +
+  theme_minimal()
+```
+p-value = 0.6:
+
+Since p>0.05, we fail to reject the null hypothesis.
+This means there is no statistically significant association between work location and mental health conditions in this dataset.
+Implications:
+
+From this analysis, it does not appear that the mental health conditions (anxiety, burnout, depression, none) are influenced by the type of work location (hybrid, onsite, remote).
+
+## Work location vs Social Isolation 
+```{r}
+# Create contingency table
+social_isolation_table <- table(df$work_location, df$social_isolation_rating)
+
+# Perform Chi-squared test
+social_isolation_chi2 <- chisq.test(social_isolation_table)
+
+# Output results
+social_isolation_chi2
+
+# Calculate proportions for social_isolation_rating by work_location
+social_isolation_plot <- df %>%
+  group_by(work_location, social_isolation_rating) %>%
+  summarize(count = n()) %>%
+  mutate(proportion = count / sum(count))
+
+# Plot
+ggplot(social_isolation_plot, aes(x = work_location, y = proportion, fill = as.factor(social_isolation_rating))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Social Isolation Ratings by Work Location",
+    x = "Work Location",
+    y = "Proportion",
+    fill = "Social Isolation Rating"
+  ) +
+  theme_minimal()
+```
+
+The very high p-value (1) indicates that there is no statistically significant relationship between work location (hybrid, onsite, remote) and social isolation rating. This suggests that the social isolation scores (ranging from 1–5) are evenly distributed across all work location categories, with no meaningful association between these two variables.
+
+## Load dataset 2
+
+```{r}
+# Load data from GitHub into R
+url2 <- "https://raw.githubusercontent.com/leslietavarez/remotework-mentalhealth/refs/heads/main/train.csv"
+df2 <- read.csv(url2)
+
+# Check the data
+head(df2)
+```
+## Clean dataset 2
+```{r}
+colnames(df2) <- tolower(colnames(df2)) #change all column names to lowercase
+
+df2 <- df2 %>%
+  mutate(across(where(is.character), tolower)) #change all characters to lowercase
+
+sum(is.na(df2)) #check for missing values returned 0
+
+df2 <- distinct(df2) #removes duplicates if any
+
+
+colSums(is.na(df2))
+
+library(naniar)
+
+# Visualize missing values
+vis_miss(df2)
+
+df2_cleaned <- df2[complete.cases(df2), ]
+
+# Visualize missing values again to make sure
+vis_miss(df2_cleaned)
+```
+## Logistic regression of dataset 2 
+```{r}
+# Convert the dependent variable to binary numeric
+df2_cleaned$wfh.setup.available <- ifelse(df2_cleaned$wfh.setup.available == "yes", 1, 0)
+
+# Fit a logistic regression model
+model_logistic <- glm(wfh.setup.available ~ mental.fatigue.score + burn.rate + resource.allocation, 
+                       family = binomial, 
+                       data = df2_cleaned)
+
+# Display the summary
+summary(model_logistic)
+
+```
+```{r}
+library(ggplot2)
+library(tidyr)
+
+# Aggregate data for grouped bar plot
+# Summarize the data
+df_summary <- df2_cleaned %>%
+  group_by(wfh.setup.available) %>%
+  summarize(
+    avg_mental_fatigue = mean(mental.fatigue.score, na.rm = TRUE),
+    avg_burn_rate = mean(burn.rate, na.rm = TRUE),
+    avg_resource_allocation = mean(resource.allocation, na.rm = TRUE)
+  ) %>%
+  gather(key = "Variable", value = "Value", avg_mental_fatigue, avg_burn_rate, avg_resource_allocation)
+
+# Create grouped bar plot
+ggplot(df_summary, aes(x = wfh.setup.available, y = Value, fill = Variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparison of Mental Fatigue, Burn Rate, and Resource Allocation by WFH Setup",
+    x = "WFH Setup Availability",
+    y = "Average Value",
+    fill = "Variables"
+  ) +
+  theme_minimal()
+
+```
+
+Interpretation
+Intercept:The intercept value suggests the baseline log-odds when all predictors are zero.
+
+Mental Fatigue Score (0.1160):
+Positive coefficient. As mental fatigue score increases, the likelihood of having WFH setup availability increases.
+Highly significant (p < 0.001).
+
+Burn Rate (-3.7242):
+Negative coefficient. Higher burn rate values are associated with a lower likelihood of having WFH setup availability.
+Highly significant (p < 0.001).
+
+Resource Allocation (-0.0846):
+Negative coefficient. Greater resource allocation is associated with a lower likelihood of having WFH setup availability.
+Highly significant (p < 0.001).
+
+## Conclusion:
+My analysis aimed to explore the relationship between work location (onsite, remote, hybrid) and mental health indicators, including mental fatigue, stress levels work-life balance, burnout, and resource allocation, to better understand how different work arrangements might impact employees' mental well-being.The findings from dataset 1 were statistically insignificant – p-values failed to reject the null hypothesis.The findings from dataset 2 were statistically significant, with p-values consistently below conventional thresholds (0.05), indicating strong evidence against the null hypothesis. This suggests that work location, alongside mental health factors, plays a meaningful role in determining mental health outcomes in employees. I believe that more research needs to be done to make a more accurate conclusion. 
